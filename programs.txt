@@ -1,0 +1,491 @@
+#1
+
+import numpy as np
+import pandas as pd
+data=pd.DataFrame()
+data=pd.read_csv('tennis.csv')
+data.head(5)
+h=['0']*7
+row,col=data.shape
+for i in range(row):
+    if(data.iloc[i,-1]=='yes'):
+        for j in range(col-1):
+            if h[j]=='0' and data.iloc[i,j]!=h[j]:
+                h[j]=data.iloc[i,j]
+            elif h[j]!='0' and data.iloc[i,j]!=h[j]:
+                h[j]='?'
+                
+h.pop(-1)
+    
+print("final",h)
+
+
+#2
+
+import numpy as np
+import pandas as pd
+data = pd.DataFrame(data=pd.read_csv('trainingexamples.csv'))
+concepts = np.array(data.iloc[:,0:-1])
+print(concepts)
+target = np.array(data.iloc[:,-1])
+print(target)
+print("initialization of specific_h and general_h")
+specificHypo = concepts[0].copy()
+generalHypo = [["?" for i in range(len(specificHypo))] for i in
+range(len(specificHypo))]#print(generalHypo)
+for i, h in enumerate(concepts):
+if target[i] == "Yes":
+for x in range(len(specificHypo)):
+if h[x] != specificHypo[x]:
+specificHypo[x] = '?'
+generalHypo[x][x] = '?'
+if target[i] == "No":
+for x in range(len(specificHypo)):
+if h[x] != specificHypo[x]:
+generalHypo[x][x] = specificHypo[x]
+else:
+generalHypo[x][x] = '?'
+print("Steps of Candidate Elimination Algorithm",i+1)
+print("specific Hypo ",i+1)
+print(specificHypo)
+print("general Hypo ", i+1)
+print(generalHypo,"\n")
+indices = [i for i, val in enumerate(generalHypo) if val == ['?', '?',
+'?', '?', '?', '?']]
+for i in indices:
+generalHypo.remove(['?', '?', '?', '?', '?', '?'])
+print("Final specificHypo:", specificHypo,sep = "\n")
+print("Final generalHypo:", generalHypo, sep="\n")
+
+
+#3
+
+import math
+import csv
+from collections import Counter
+
+with open('tennis.csv') as csvFile:
+    g_data = [tuple(line) for line in csv.reader(csvFile)]
+    g_headers = g_data[0]
+    g_data = g_data[1:]
+
+
+class Node:
+    def __init__(self, headers, data):
+        self.decision_attribute = None
+        self.child = {}
+        self.headers = headers
+        self.data = data
+        self.decision = None
+
+
+def get_attribute_column(headers, data, attribute):
+    i = headers.index(attribute)
+    a_list = [ele[i] for ele in data]
+    return a_list
+
+
+def calculate_entropy(probs):
+    return sum([-prob * math.log(prob, 2) for prob in probs])
+
+
+def split_data(headers, data, attribute, attr_value):
+    i = headers.index(attribute)
+    return [ele for ele in data if ele[i] == attr_value]
+
+
+def entropy(headers, data, attribute='PlayTennis', gain=False):
+    cnt = Counter(get_attribute_column(headers, data, attribute))  # Counter calculates the proportion of class
+    num_instances = len(data)
+    probs = [x / num_instances for x in cnt.values()]  # x means count of each attribute.
+    if not gain:
+        return calculate_entropy(probs)
+    gain = 0
+    for Class, prob in zip(cnt.keys(), probs):
+        gain += -prob * entropy(headers, split_data(headers, data, attribute, Class))
+    return gain
+
+
+def information_gain(headers, data):
+    max_gain = -1
+    max_gain_attribute = None
+    for attribute in headers:  # Find max information gain
+        if attribute == 'PlayTennis':
+            continue
+        gain = entropy(headers, data) + entropy(headers, data, attribute, gain=True)
+        if gain > max_gain:
+            max_gain = gain
+            max_gain_attribute = attribute
+    return max_gain_attribute
+
+
+def drop_attribute(headers, data, attribute):
+    i = headers.index(attribute)
+    new_headers = [ele for ele in headers if ele != attribute]
+    new_dataset = [tuple(data[:i] + data[i + 1:]) for data in data]
+    return new_headers, new_dataset
+
+
+def most_common_outcome(headers, data):
+    cnt = Counter(get_attribute_column(headers, data, 'PlayTennis'))
+    return cnt.most_common(1)[0][0]
+
+
+def id3(root):
+    if len(root.headers) == 1:
+        root.decision = most_common_outcome(root.headers, root.data)
+        return
+
+    outcome_value_set = set(get_attribute_column(root.headers, root.data, 'PlayTennis'))
+    if len(outcome_value_set) == 1:
+        root.decision = list(outcome_value_set)[0]
+        return
+
+    max_gain_attribute = information_gain(root.headers, root.data)
+    root.decision_attribute = max_gain_attribute
+    for attr_val in set(get_attribute_column(root.headers, root.data, max_gain_attribute)):
+        child_data = split_data(root.headers, root.data, max_gain_attribute, attr_val)
+
+        if child_data is None or len(child_data) == 0:
+            root.decision = most_common_outcome(root.headers, root.data)
+            return
+
+        (new_headers, new_data) = drop_attribute(root.headers, child_data, max_gain_attribute)
+        root.child[attr_val] = Node(new_headers, new_data)
+        id3(root.child[attr_val])
+
+
+root = Node(g_headers, g_data)
+id3(root)
+
+
+def print_tree(root, disp=""):
+    if root.decision is not None:
+        if len(disp) == 0:
+            print(str(root.decision))
+        else:
+            print(disp[:-4] + "THEN " + str(root.decision))
+        return
+    for attribute, node in root.child.items():
+        print_tree(node, disp + "IF {} EQUALS {} AND ".format(root.decision_attribute, attribute))
+
+
+print("Decision Tree Rules:")
+print_tree(root)
+
+
+#4
+
+import numpy as np
+
+x = np.array(([2,9],[1,5],[3,6]), dtype = float)
+y = np.array(([92],[86],[89]), dtype = float)
+#normalization
+x = x/np.amax(x,axis=0)
+y = y/100
+
+def sigmoid(x):
+    return(1/(1+np.exp(-x)))
+    
+def derivative_sigmoid(x):
+    return (x * (1-x))
+
+epoch = 7000
+lr = 0.1
+input_neurons = 2
+hidden_neurons = 3
+output_neurons = 1
+weight_hidden = np.random.uniform(size=(input_neurons, hidden_neurons))
+bias_hidden = np.random.uniform(size=(1, hidden_neurons))
+weight_output = np.random.uniform(size=(hidden_neurons, output_neurons))
+bias_output = np.random.uniform(size=(1, output_neurons))
+
+for i in range(epoch):
+    hidden_input = np.dot(x, weight_hidden) + bias_hidden
+    hidden_activation = sigmoid(hidden_input)
+    output_input = np.dot(hidden_activation, weight_output) + bias_output
+    output = sigmoid(output_input)
+    
+    Error_output = y - output
+    output_gradient = derivative_sigmoid(output)
+    derivative_output = Error_output * output_gradient
+    
+    Error_hidden = derivative_output.dot(weight_output.T)
+    hidden_gradient = derivative_sigmoid(hidden_activation)
+    derivative_hidden = Error_hidden * hidden_gradient
+    
+    weight_output = weight_output + lr * hidden_activation.T.dot(derivative_output)
+    weight_hidden = weight_hidden + lr * x.T.dot(derivative_hidden)
+    
+print("Input: \n" + str(x))
+print("Actual Output: \n" + str(y))
+print("Predicted Output: \n", output)
+
+
+#5
+
+import pandas as pd
+import numpy as np
+data=pd.DataFrame()
+data['gender']=['male','male','male','male','female','female','female','female']
+data['height']=[6,5.92,5.58,5.92,5,5.5,5.42,5.75]
+data['weight']=[180,190,170,165,100,150,130,150]
+data['footsize']=[12,11,12,10,6,8,7,9]
+print('\n dataset')
+print(data)
+person=pd.DataFrame()
+person['height']=[5]
+person['weight']=[130]
+person['footsize']=[6]
+print('\ntest Instance')
+print(person)
+n_male=data['gender'][data['gender']=='male'].count()
+n_female=data['gender'][data['gender']=='female'].count()
+totalppl=data['gender'].count()
+p_male=n_male/totalppl
+p_female=n_female/totalppl
+data_means=data.groupby('gender').mean()
+print('\ndataset mean')
+print(data_means)
+data_variance=data.groupby('gender').var()
+print('\ndataset variance')
+print(data_variance)
+male_height_mean=data_means['height'][data_variance.index=='male'].values[0]
+male_weight_mean=data_means['weight'][data_variance.index=='male'].values[0]
+male_footsize_mean=data_means['footsize'][data_variance.index=='male'].values[0]
+male_height_variance=data_variance['height'][data_variance.index=='male'].values[0]
+male_weight_variance=data_variance['weight'][data_variance.index=='male'].values[0]
+male_footsize_variance=data_variance['footsize'][data_variance.index=='male'].values[0]
+female_height_mean=data_means['height'][data_variance.index=='female'].values[0]
+female_weight_mean=data_means['weight'][data_variance.index=='female'].values[0]
+female_footsize_mean=data_means['footsize'][data_variance.index=='female'].values[0]
+female_height_variance=data_variance['height'][data_variance.index=='female'].values[0]
+female_weight_variance=data_variance['weight'][data_variance.index=='female'].values[0]
+female_footsize_variance=data_variance['footsize'][data_variance.index=='female'].values[0]
+def p_x_given_y(x,mean_y,variance_y):
+    p=1/(np.sqrt(2*np.pi*variance_y))*np.exp((-(x-mean_y)**2)/(2*variance_y))
+    return p
+print('\n probability male')
+prob_male=p_male*p_x_given_y(person['height'][0],male_height_mean,male_height_variance)*p_x_given_y(person['weight'][0],male_weight_mean,male_weight_variance)*p_x_given_y(person['footsize'][0],male_footsize_mean,male_footsize_variance)
+print(prob_male)
+print('\n probability female')
+prob_female=p_female*p_x_given_y(person['height'][0],female_height_mean,female_height_variance)*p_x_given_y(person['weight'][0],female_weight_mean,female_weight_variance)*p_x_given_y(person['footsize'][0],female_footsize_mean,female_footsize_variance)
+print(prob_female)
+if(prob_male>prob_female):
+    print("\n target label:Male")
+else:
+    print("\n target label:Female")
+
+#6
+
+from sklearn.datasetsimport fetch_20newsgroups
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+import numpy as np
+categories=['alt.atheism','soc.religion.christian','comp.graphics','sci.m
+ed']
+twenty_train=fetch_20newsgroups(subset='train',categories=categories,shuf
+fle=True)
+twenty_test=fetch_20newsgroups(subset='test',categories=categories,shuffl
+e=True)
+print(len(twenty_train.data))
+print(len(twenty_test.data))
+print(twenty_train.target_names)
+print("\n".join(twenty_train.data[0].split("\n")))
+print(twenty_train-target[0])
+from sklearn.feature_extraction.text import CountVectorizer
+count_vect=CountVectorizer()
+X_train_tf=count_vect.fit_transform(twenty_train.data)
+from sklearn.feature_extraction.text import TfidfTransformer
+tfidf_transformer=TfidfTransformer()
+X_train_tfidf=tfidf_transformer.fit_transform(X_train_tf)
+X_train_tfidf.shape
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accurcy_score
+from sklearn import metrics
+mod=MultinomialNB()
+mod.fit(X_train_tfidf,twenty_train.target)
+X_test_tf=count_vect.fit_transform(twenty_test.data)
+X_test_tfidf=tfidf_transformer.fit_transform(X_test_tfidf)
+predicted=mod.predict(X_test_tfidf)
+print("Accuracy:",accuracy_score(twenty_test.target,predicted))
+print(classification_report(twenty_test.target,predicted,target_names=twe
+nty_test.target_names))
+print("confusion matrix is
+\n",metrics.confusion_matrix(twenty_test.target,predicted))
+
+
+#7
+
+import pandas as pd
+from pgmpy.estimators import MaximumLikelihoodEstimator
+from pgmpy.models import BayesianModel
+from pgmpy.inference import VariableElimination
+
+data = pd.read_csv("ds4.csv")
+heart_disease = pd.DataFrame(data)
+print(heart_disease)
+
+model = BayesianModel([
+    ('age', 'Lifestyle'),
+    ('Gender', 'Lifestyle'),
+    ('Family', 'heartdisease'),
+    ('diet', 'cholestrol'),
+    ('Lifestyle', 'diet'),
+    ('cholestrol', 'heartdisease'),
+    ('diet', 'cholestrol')
+])
+
+model.fit(heart_disease, estimator=MaximumLikelihoodEstimator)
+
+HeartDisease_infer = VariableElimination(model)
+
+print('For Age enter SuperSeniorCitizen:0, SeniorCitizen:1, MiddleAged:2, Youth:3, Teen:4')
+print('For Gender enter Male:0, Female:1')
+print('For Family History enter Yes:1, No:0')
+print('For Diet enter High:0, Medium:1')
+print('for LifeStyle enter Athlete:0, Active:1, Moderate:2, Sedentary:3')
+print('for Cholesterol enter High:0, BorderLine:1, Normal:2')
+
+q = HeartDisease_infer.query(variables=['heartdisease'], evidence={
+    'age': int(input('Enter Age: ')),
+    'Gender': int(input('Enter Gender: ')),
+    'Family': int(input('Enter Family History: ')),
+    'diet': int(input('Enter Diet: ')),
+    'Lifestyle': int(input('Enter Lifestyle: ')),
+    'cholestrol': int(input('Enter Cholestrol: '))
+})
+
+print(q)
+
+#8
+
+mport matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from sklearn import datasets
+import sklearn.metrics as sm
+from sklearn.cluster import KMeans
+
+iris = datasets.load_iris()
+x = pd.DataFrame(iris.data)
+x.columns = ['Sepal_Length','Sepal_Width','Petal_Length','Petal_Width']
+y = pd.DataFrame(iris.target)
+y.columns = ['Targets']
+
+plt.figure(figsize=(14,7))
+colormap = np.array(['red','blue','black'])
+plt.subplot(1,2,1)
+plt.scatter(x.Sepal_Length, x.Sepal_Width, c = colormap[y.Targets], s=40)
+plt.title('Sepal')
+plt.subplot(1,2,2)
+plt.scatter(x.Petal_Length, x.Petal_Width, c = colormap[y.Targets], s=40)
+plt.title('Petal')
+
+model = KMeans(n_clusters = 3)
+model.fit(x)
+model.labels_
+plt.figure(figsize=(14,7))
+colormap = np.array(['red','blue','black'])
+plt.subplot(1,2,1)
+plt.scatter(x.Sepal_Length, x.Sepal_Width, c = colormap[y.Targets], s=40)
+plt.title('Real Classification')
+plt.subplot(1,2,2)
+plt.scatter(x.Petal_Length, x.Petal_Width, c = colormap[model.labels_], s=40)
+plt.title('K Mean Classification')
+
+predY = np.choose(model.labels_, [0,1,2]).astype(np.int64)
+
+from sklearn import preprocessing
+from sklearn.mixture import GaussianMixture
+scaler = preprocessing.StandardScaler()
+scaler.fit(x)
+xsa = scaler.transform(x)
+xs = pd.DataFrame(xsa, columns = x.columns)
+gmm = GaussianMixture(n_components = 3)
+gmm.fit(xs)
+y_cluster_gmm = gmm.predict(xs)
+plt.figure(figsize=(14,7))
+plt.subplot(1,2,1)
+plt.scatter(x.Petal_Length, x.Petal_Width, c = colormap[y_cluster_gmm], s=40)
+plt.title('EM Classification')
+plt.subplot(1,2,2)
+plt.scatter(x.Petal_Length, x.Petal_Width, c = colormap[predY], s=40)
+plt.title('K Mean Classification')
+
+
+#9
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.datasets import load_iris
+
+iris_dataset = load_iris()
+X = np.array(iris_dataset.data)
+y = np.array(iris_dataset.target)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
+classifier = KNeighborsClassifier(n_neighbors=5)
+classifier.fit(X_train, y_train)
+y_pred = classifier.predict(X_test)
+
+print("Accuracy: ", accuracy_score(y_test, y_pred))
+print("Confusion Matrix: \n", confusion_matrix(y_test, y_pred))
+
+#10
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# Bokeh version is in alternatives folder
+
+
+def radial_kernel(x0, X, tau):
+    return np.exp(np.sum((X - x0) ** 2, axis=1) / (-2 * tau * tau))  # Weight or Radial Kernel Bias Function
+
+
+def local_regression(x0, X, Y, tau):
+    # add bias term
+    x0 = np.r_[1, x0]  # Add one to avoid the loss in information
+    X = np.c_[np.ones(len(X)), X]
+
+    # fit model: normal equations with kernel
+    xw = X.T * radial_kernel(x0, X, tau)  # XTranspose * W
+
+    beta = np.linalg.pinv(xw @ X) @ xw @ Y  # @ Matrix Multiplication or Dot Product
+
+    # predict value
+    return x0 @ beta  # @ Matrix Multiplication or Dot Product for prediction
+
+
+n = 1000
+# Generate dataset
+X = np.linspace(-3, 3, num=n)
+print("The Data Set ( 10 Samples) X:\n", X[1:10])
+Y = np.log(np.abs(X ** 2 - 1) + .5)
+print("The Fitting Curve Data Set (10 Samples) Y:\n", Y[1:10])
+# Jitter X
+X += np.random.normal(scale=.1, size=n)
+print("Jitter (10 Samples) X :\n", X[1:10])
+
+domain = np.linspace(-3, 3, num=300)
+print(" Xo Domain Space(10 Samples):\n", domain[1:10])
+
+
+def plot_lwr(tau):
+    # Prediction through regression
+    predictions = [local_regression(x0, X, Y, tau) for x0 in domain]
+    plt.scatter(X, Y, color='blue', alpha=0.3, s=20)
+    plt.plot(domain, predictions, color='red', linewidth=3)
+    plt.show()
+
+
+# Plotting the curves with different tau
+plot_lwr(10.)
+plot_lwr(1.)
+plot_lwr(0.1)
+plot_lwr(0.01)
